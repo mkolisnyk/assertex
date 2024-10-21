@@ -1,0 +1,161 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'checkstyle'
+    id 'eclipse'
+    id 'jacoco'
+    id 'java'
+    id 'jvm-test-suite'
+    id 'pmd'
+    id 'maven-publish'
+}
+
+group = 'com.github.mkolisnyk'
+version = '1.0'
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/main/java'
+        }
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
+    test {
+        java {
+            srcDir 'src/test/java'
+        }
+        resources {
+            srcDir 'src/test/resources'
+        }
+    }
+    integration {
+        java {
+            srcDir 'src/it/java'
+            compileClasspath += project.configurations.compileClasspath + project.configurations.testCompileClasspath + sourceSets.main.output + sourceSets.test.output
+        	runtimeClasspath += project.configurations.runtimeClasspath + project.configurations.testRuntimeClasspath + sourceSets.main.output + sourceSets.test.output
+        }
+        resources {
+            srcDir 'src/it/resources'
+        }
+    }
+}
+
+configurations {
+    integrationImplementation.extendsFrom testImplementation
+    integrationRuntime.extendsFrom testRuntime
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.junit.platform:junit-platform-suite:1.9.0'
+    implementation 'org.junit.jupiter:junit-jupiter:5.9.0'
+    implementation 'org.junit.platform:junit-platform-suite-engine:1.9.0'
+    testImplementation 'org.mockito:mockito-core:5.14.1'
+}
+
+test {
+    useJUnitPlatform {
+        includeEngines "junit-jupiter"
+        excludeEngines "junit-vintage"
+        testClassesDirs = testing.suites.test.sources.output.classesDirs
+        classpath = testing.suites.test.sources.runtimeClasspath
+    }
+    testLogging {
+        events "PASSED", "FAILED", "SKIPPED"
+        showStandardStreams = true
+    }
+    jacoco {
+        enabled = true
+        includes = []
+        excludes = ["com.sample.app.model.*", "com.sample.app.Application", "com.sample.app.model.AppController"]
+    }
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    reports {
+        html.outputLocation = layout.buildDirectory.dir('reports/tests/test/jacoco')
+    }
+    afterEvaluate {
+        classDirectories = files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                     '**/sample/app/model/**/*.*',
+                     '**/sample/app/*.*',
+            ])
+        })
+    }
+    dependsOn test
+    finalizedBy jacocoTestCoverageVerification
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.65
+            }
+        }
+   }
+}
+
+task integrationTest(type: Test) {
+    useJUnitPlatform {
+        includeEngines "junit-jupiter"
+        excludeEngines "junit-vintage"
+        testClassesDirs = testing.suites.test.sources.output.classesDirs + sourceSets.integration.output.classesDirs
+        classpath = testing.suites.test.sources.runtimeClasspath + sourceSets.integration.runtimeClasspath
+    }
+}
+
+checkstyle {
+    project.ext.checkstyleVersion = '8.20'    
+    configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
+}
+
+pmd {
+    consoleOutput = true
+    toolVersion = "7.0.0"
+}
+
+eclipse {
+    classpath {
+        plusConfigurations+=[configurations.integrationCompileClasspath] 
+    } 
+}
+
+tasks.withType(Copy).all { duplicatesStrategy 'exclude' }
+
+jar {
+    manifest {
+        attributes "Main-Class": "com.sample.app.Application"
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+publishing {
+  repositories {
+    maven {
+      name = "OSSRH"
+      url = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+      credentials {
+        username = System.getenv("MAVEN_USERNAME")
+        password = System.getenv("MAVEN_PASSWORD")
+      }
+    }
+  }
+}
+
