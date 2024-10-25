@@ -16,7 +16,7 @@ plugins {
 }
 
 group = 'com.github.mkolisnyk'
-version = '1.0'
+version = '0.0.1'
 
 sourceSets {
     main {
@@ -145,21 +145,6 @@ jar {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 }
-
-/*
-publishing {
-  repositories {
-    maven {
-      name = "OSSRH"
-      url = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-      credentials {
-        username = System.getenv("MAVEN_USERNAME")
-        password = System.getenv("MAVEN_PASSWORD")
-      }
-    }
-    
-  }
-}*/
 
 publishing {
     repositories {
