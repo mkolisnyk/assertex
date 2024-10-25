@@ -146,6 +146,7 @@ jar {
     }
 }
 
+/*
 publishing {
   repositories {
     maven {
@@ -156,6 +157,24 @@ publishing {
         password = System.getenv("MAVEN_PASSWORD")
       }
     }
+    
   }
-}
+}*/
 
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/mkolisnyk/assertex")
+            credentials {
+                username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+                password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            from(components.java)
+        }
+    }
+}
